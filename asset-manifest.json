@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.css": "/Path-Bingo/static/css/main.36e328f6.chunk.css",
+    "main.js": "/Path-Bingo/static/js/main.8bd12a26.chunk.js",
+    "main.js.map": "/Path-Bingo/static/js/main.8bd12a26.chunk.js.map",
+    "runtime-main.js": "/Path-Bingo/static/js/runtime-main.67c98e5b.js",
+    "runtime-main.js.map": "/Path-Bingo/static/js/runtime-main.67c98e5b.js.map",
+    "static/js/2.7c6855e5.chunk.js": "/Path-Bingo/static/js/2.7c6855e5.chunk.js",
+    "static/js/2.7c6855e5.chunk.js.map": "/Path-Bingo/static/js/2.7c6855e5.chunk.js.map",
+    "index.html": "/Path-Bingo/index.html",
+    "precache-manifest.b7f273e1f080877cd7e83fb805846130.js": "/Path-Bingo/precache-manifest.b7f273e1f080877cd7e83fb805846130.js",
+    "service-worker.js": "/Path-Bingo/service-worker.js",
+    "static/css/main.36e328f6.chunk.css.map": "/Path-Bingo/static/css/main.36e328f6.chunk.css.map",
+    "static/js/2.7c6855e5.chunk.js.LICENSE.txt": "/Path-Bingo/static/js/2.7c6855e5.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.67c98e5b.js",
+    "static/js/2.7c6855e5.chunk.js",
+    "static/css/main.36e328f6.chunk.css",
+    "static/js/main.8bd12a26.chunk.js"
+  ]
+}
