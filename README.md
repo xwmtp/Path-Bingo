@@ -1,7 +1,5 @@
-# OoT Exploration Bingo
+# OoT Path Bingo
 
-Bingo variation where you only see two initial goals from the start, and get access to the adjacent goals when you complete one.
+Bingo variation where you only see three initial goals at the start, and explore your way to the top of the board to complete one of the five final goals.
 
-You can find Exploration Bingo at https://ootbingo.github.io/exploration-bingo.
-
-Originally created by Gombill. Redesigned in React.js by xwillmarktheplace.
+Path Bingo can be found at https://xwmtp.github.io/path-bingo/
