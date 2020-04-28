@@ -48,7 +48,7 @@ var DEFAULT_PROFILE = {
 var PATH_PROFILE = {
     defaultMinimumSynergy: -3,
     defaultMaximumSynergy: 7,
-    defaultMaximumIndividualSynergy: DEFAULT_PROFILE.defaultMaximumIndividualSynergy,
+    defaultMaximumIndividualSynergy: 5,
     defaultMaximumSpill: DEFAULT_PROFILE.defaultMaximumSpill,
     defaultInitialOffset: 1,
     defaultMaximumOffset: 3,
@@ -239,6 +239,9 @@ var BingoGenerator = function (bingoList, options) {
     this.maximumOffset = options.maximumOffset || this.profile.defaultMaximumOffset;
 
     Math.seedrandom(this.seed);
+
+    this.random_number = Math.random()
+    console.log(this.random_number)
 };
 
 //Main entry point
@@ -249,13 +252,14 @@ BingoGenerator.prototype.makeCard = function () {
 
     // fill in the goals of the board in a random order
     var populationOrder = this.generatePopulationOrder();
+    console.log(`Population order: ${populationOrder}`)
     for (var i = 1; i <= 25; i++) {
         var nextPosition = populationOrder[i];
 
         var result = this.chooseGoalForPosition(nextPosition);
 
         if (result.goal) {
-            console.log(`Pos ${nextPosition}: ${result.goal[this.language]}`)
+            console.log(`Pos ${nextPosition}: ${result.goal[this.language]} (time: ${result.goal.time} selfsynergy: ${result.goal.types.selfsynergy})`)
             // copy the goal data into the square
             this.bingoBoard[nextPosition].types = result.goal.types;
             this.bingoBoard[nextPosition].subtypes = result.goal.subtypes;
@@ -312,7 +316,7 @@ BingoGenerator.prototype.chooseGoalForPosition = function (position) {
 
         var goalsAtTime = this.getGoalsInTimeRange(minTime, maxTime);
         goalsAtTime = goalsAtTime.shuffled();
-        console.log(`Found ${goalsAtTime.length} goals in range ${minTime}, ${maxTime} for desired time ${desiredTime}`)
+        console.log(`Found ${goalsAtTime.length} goals in range ${minTime}, ${maxTime} for desired time ${desiredTime} (diff: ${desiredDifficulty})`)
 
         // scan through each goal at this difficulty level
         for (var j = 0; j < goalsAtTime.length; j++) {
@@ -330,7 +334,7 @@ BingoGenerator.prototype.chooseGoalForPosition = function (position) {
             // in blackout mode, don't allow goals that conflict with each other, e.g. 8 hearts and 9 hearts,
             // even if they are in different rows
             if (this.mode === 'blackout' || this.mode === 'path') {
-                if (this.hasConflictsOnBoard(goal)) {
+                if (this.hasConflictsOnPartOfBoard(goal, position)) {
                     continue;
                 }
             }
@@ -345,6 +349,11 @@ BingoGenerator.prototype.chooseGoalForPosition = function (position) {
             }
 
             if (this.maximumSynergy >= synergies.maxSynergy && synergies.minSynergy >= this.minimumSynergy) {
+
+
+                console.log(`>Pos ${position}: ${goal.name} (time: ${goal.time}, selfsynergy: ${goal.types.selfsynergy}, offset: ${offset})`)
+            // 
+
                 return goalWithSynergy;
             }
             /*return {goal: goal, synergy: synergies.maxSynergy};*/
@@ -390,34 +399,30 @@ BingoGenerator.prototype.generatePopulationOrder = function () {
     var last = [23]
     populationOrder = populationOrder.concat(last)
 
-    //Lastly, find location of difficulty 23,24,25 elements and put them out front
-    for (var k = 23; k <= 25; k++) {
-        var currentSquare = this.getDifficultyIndex(k);
-        if (currentSquare === 0) continue;
-        for (var i = 1; i < 25; i++) {
-            if (populationOrder[i] == currentSquare) {
-                populationOrder.splice(i, 1);
-                break;
-            }
-        }
-        populationOrder.splice(1, 0, currentSquare);
-    }
-
     return populationOrder;
 };
 
 // uses a magic square to calculate the intended difficulty of a location on the bingo board
 BingoGenerator.prototype.difficulty = function (i) {
 
-    const difficulties = [
-        15, 17, 23, 16, 14,
-        3, 5, 6, 5, 2,
-        4, 7, 11, 8, 6,
-        8, 10, 14, 9, 7,
-        9, 13, 20, 15, 11
+    let difficulties = [
+        [15, 17, 23, 16, 14],
+        [3, 5, 6, 5, 2],
+        [4, 7, 11, 8, 6],
+        [8, 10, 14, 9, 7],
+        [9, 13, 20, 15, 11]
     ]
-    return difficulties[i - 1]
+
+    if (this.random_number > 0.5) {
+        this.mirrorDifficulties(difficulties)
+    }
+
+    return difficulties.flat()[i - 1]
 };
+
+BingoGenerator.prototype.mirrorDifficulties = function(board) {
+    board.forEach(row => row.reverse())
+}
 
 
 //Given a difficulty as an argument, find the square that contains that difficulty
@@ -441,8 +446,11 @@ BingoGenerator.prototype.getDifficultyIndex = function (difficulty) {
 BingoGenerator.prototype.getGoalsInTimeRange = function (minTime, maxTime) {
     // if linear scan ends up being too slow, we can optimize this by finding the min using binary search
     // and bailing out early after the first goal exceeds maxTime
+
     return this.goalsList.filter(function (goal) {
-        return minTime <= goal.time && goal.time <= maxTime;
+        // adding negative self synergy to times to make collecting goals longer (can't prepare for them in path-bingo)
+        let adjustTime = goal.time - (goal.types.selfsynergy * 1.5)
+        return minTime <= adjustTime && adjustTime <= maxTime;
     });
 };
 
@@ -483,13 +491,25 @@ BingoGenerator.prototype.hasChildAfterStart = function (goal, position) {
  * @param goal  the goal to check for conflicts with (not already on the board)
  * @returns {boolean} true if the board contains goals that conflict with the given goal
  */
-BingoGenerator.prototype.hasConflictsOnBoard = function (goal) {
+BingoGenerator.prototype.hasConflictsOnPartOfBoard = function (goal, position) {
+
+    function onSameBoardPart(pos1, pos2) {
+        const colPos1 = ((pos1 - 1) % 5) + 1
+        const colPos2 = ((pos2 - 1) % 5) + 1
+
+        return (colPos1 <= 3 && colPos2 <= 3) || (colPos1 >=3 && colPos2 >= 3)
+    }
+
+
     for (var i = 1; i <= 25; i++) {
         var square = this.bingoBoard[i];
-        if (square.goal) {
+
+        if (square.goal ) {
             var squares = [goal, square.goal];
-            var synergy = this.evaluateSquares(squares);
+            var synergy = this.evaluateSquares(squares, false, true);
+  
             if (synergy >= TOO_MUCH_SYNERGY) {
+                console.log(`conflict: ${goal.name} (for pos ${position}) has too much synergy with ${square.goal.name} on the board! Synergy: ${synergy}`)
                 return true;
             }
         }
@@ -571,7 +591,7 @@ BingoGenerator.prototype.evaluateRow = function (row, log = false) {
  * This is determined using the type and subtype information of the goals in each square.
  * @param squares
  */
-BingoGenerator.prototype.evaluateSquares = function (squares, log = false) {
+BingoGenerator.prototype.evaluateSquares = function (squares, log = false, conflict_log=false) {
     // bail out if there are duplicate goals
     // NOTE: keep this in addition to the duplicate checking from chooseGoalForPosition
     // because this still detects cases from hardcoded boards for analysis
@@ -581,12 +601,13 @@ BingoGenerator.prototype.evaluateSquares = function (squares, log = false) {
     }
 
     if (log) {
-        console.log("squares")
+        console.log("--- evaluate these squares:")
+        console.log(squares.map(sq => sq.name))
         console.log(squares)
     }
 
     var synergiesForSquares = this.calculateSynergiesForSquares(squares);
-    return this.calculateEffectiveSynergyForSquares(synergiesForSquares, log = log);
+    return this.calculateEffectiveSynergyForSquares(synergiesForSquares, log = log, conflict_log=conflict_log);
 };
 
 // aggregates type synergy data from the squares in a row for later use
@@ -609,7 +630,9 @@ BingoGenerator.prototype.calculateSynergiesForSquares = function (squares) {
 
         // can't add a time difference for squares that are empty (since it's undefined)
         if (square.time !== undefined && square.desiredTime !== undefined) {
-            timeDifferences.push(square.desiredTime - square.time);
+            // add negative selfsynergy to goals to make collect goals seem longer
+            const adjustTime = square.time - (square.types.selfsynergy * 1.5)
+            timeDifferences.push(square.desiredTime - adjustTime);
         }
     }
 
@@ -724,7 +747,7 @@ BingoGenerator.prototype.filterSynergyValuesForType = function (type, synergies)
 };
 
 // given aggregated type synergies for the row, calculates the effective synergy for that row
-BingoGenerator.prototype.calculateEffectiveSynergyForSquares = function (synergiesForSquares, log = false) {
+BingoGenerator.prototype.calculateEffectiveSynergyForSquares = function (synergiesForSquares, log = false, conflict_log=false) {
 
     if (log) {
         console.log("synergiesForSquares:")
@@ -765,6 +788,9 @@ BingoGenerator.prototype.calculateEffectiveSynergyForSquares = function (synergi
 
         for (var i = 0; i < synergies.length; i++) {
             if (synergies[i] > this.maximumIndividualSynergy) {
+                if (conflict_log) {
+                    console.log(`conflict synergy: ${synergies[i]}`)
+                }
                 return TOO_MUCH_SYNERGY;
             }
 
